@@ -122,6 +122,54 @@ app.delete('/api/employees/:id', async (req, res) => {
     handleError(res, err);
   }
 });
+// PATCH /api/employees/:id
+app.patch('/api/employees/:id', async (req, res) => {
+    try {
+        // Step 1: Get the fields sent by the client
+        const cols = FIELDS.filter(
+            (field) => req.body[field] !== undefined
+        );
+
+        // Step 2: Check whether any fields were sent
+        if (cols.length === 0) {
+            return res.status(400).json({
+                error: 'Send at least one field to update'
+            });
+        }
+
+        // Step 3: Get the values of those fields
+        const values = cols.map((field) => req.body[field]);
+
+        // Step 4: Build the SQL query
+        const sql = `
+      UPDATE employees
+      SET ${cols.map((field) => `${field} = ?`).join(', ')}
+      WHERE id = ?
+    `;
+
+        // Step 5: Execute the query
+        const [result] = await pool.query(sql, [
+            ...values,
+            req.params.id
+        ]);
+
+        // Step 6: Check whether the employee exists
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                error: 'Employee not found'
+            });
+        }
+
+        // Step 7: Send the response
+        res.json({
+            message: 'Employee updated successfully',
+            updatedFields: cols
+        });
+
+    } catch (err) {
+        handleError(res, err);
+    }
+});
 
 // ---------- Start server ----------
 const PORT = process.env.PORT || 3000;
